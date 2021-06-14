@@ -1,0 +1,224 @@
+TITLE My First Program (Test.asm)
+INCLUDE Irvine32.inc
+INCLUDE macros.inc
+BUFFER_SIZE = 5000
+.data
+buffer1 BYTE BUFFER_SIZE DUP(?)
+infile BYTE "input file.txt",0
+fileHandle HANDLE ?
+;buffer1 BYTE "This can be done in linear time. For each 3-gram, tally (in a hash table) how often how is how that how that follows the third word that follows the first two",0
+buffer2 BYTE 21 DUP(0)
+suggestion dword 50 DUP(?)
+suggcnt byte 20 DUP(1)			;suggestions count
+suggcnt_ptr dword 0
+temp dword 1
+err byte 1
+cnt byte 0
+ctr byte 0
+errormsg byte 'word not found'
+.code
+main PROC
+;....................file...........................
+; Open the file for input.
+mov edx,OFFSET infile
+call OpenInputFile
+mov fileHandle,eax
+
+; Read the file into a buffer1.
+mov edx,OFFSET buffer1
+mov ecx,BUFFER_SIZE
+call ReadFromFile
+jnc check_buffer1_size ; error reading?
+mWrite "Error reading file. " ; yes: show error message
+call WriteWindowsMsg
+jmp close_file
+
+
+check_buffer1_size:
+cmp eax,BUFFER_SIZE ; buffer1 large enough?
+jb buf_size_ok ; yes
+mWrite <"Error: Buffer1 too small for the file",0dh,0ah>
+jmp quit ; and quit
+
+buf_size_ok:
+mov buffer1[eax],0 ; insert null terminator
+mWrite "File size: "
+call WriteDec ; display file size
+call Crlf
+;...................................................
+;proj
+mov edx,offset buffer2
+mov ecx,20
+call readstring
+
+mov dh,1
+mov dl,al
+inc dl
+call gotoxy
+
+mov eax,0
+mov ebx,0
+mov ecx,lengthof buffer1
+mov esi,offset buffer1
+mov edi,offset buffer2
+
+
+checkword: 		;Matching next word with the typed string
+mov al,[esi]
+cmp al,[edi]
+jnz completeword
+inc esi
+inc edi
+loop checkword
+
+jmp l1
+
+completeword:   ;Checking if the word has matched
+cmp al,' '
+jnz nextword
+mov bl,[edi]
+cmp bl,0
+jnz nextword
+
+wordmatched:
+inc cnt
+mov err,0
+inc esi
+mov al,[esi]
+dec ecx
+push esi
+
+
+nextword:
+mov edi,offset buffer2
+cmp al,' '
+jz checkword
+mov al,[esi]
+inc esi
+loop nextword
+
+
+mov al,err
+cmp al,0
+jz l1
+mov edx,offset errormsg
+call writestring
+call crlf
+jmp escp2
+
+l1:
+mov esi,offset suggestion
+movzx ecx,cnt
+fill:
+pop [esi]
+add esi,4
+loop fill
+
+mov esi,offset suggestion
+movzx ecx,cnt
+mov eax,0
+cmp ecx,1
+jz escp
+
+dec ecx
+MAJOR:
+mov temp,ecx
+
+mov edi,esi
+
+mov ebx,[esi]
+mov edx,[edi]
+
+mov eax,0
+
+
+PROB:
+add edi,4
+
+mov ebx,[esi]
+mov edx,[edi]
+
+dec ebx
+dec edx
+
+match:
+inc ebx
+inc edx
+mov al, byte ptr[ebx]
+cmp al,' '
+jz comp
+cmp al,byte ptr[edx]
+jz match
+loop PROB
+
+jmp GOTOm
+jmp l2
+
+comp:
+mov al,[edx]
+cmp al,' '
+jz changecnt
+loop PROB
+jmp GOTOm
+jmp l2
+
+
+changecnt:
+push esi
+mov esi,offset suggcnt
+add esi,dword ptr suggcnt_ptr
+inc byte ptr[esi]
+
+pop esi
+loop PROB
+jmp GOTOm
+
+GOTOm:
+mov ecx,temp
+add esi,4
+inc suggcnt_ptr
+loop MAJOR
+
+
+
+l2:
+mov esi,offset suggcnt
+mov eax,0
+mov ebx,0
+movzx ecx,cnt
+
+Maxcount:
+cmp al,[esi]
+ja k1
+mov al,[esi]
+mov bl,ctr
+k1:
+inc esi
+inc ctr
+loop Maxcount	
+mov al,4
+mul bl
+
+escp:
+mov esi,offset suggestion
+add esi,eax
+mov ebx,[esi]
+ 
+write:
+mov al,[ebx]
+call writechar
+inc ebx
+cmp al,' '
+jnz write
+
+call crlf
+
+escp2:
+;...............close input file...............
+close_file:
+mov eax,fileHandle
+call CloseFile
+quit:
+exit
+main ENDP
+END main
