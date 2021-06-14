@@ -1,0 +1,24 @@
+main PROC
+;....................file...........................
+; Open the file for input.
+mov edx,OFFSET infile
+call OpenInputFile
+mov fileHandle,eax
+
+; Read the file into a buffer1.
+mov edx,OFFSET buffer1
+mov ecx,BUFFER_SIZE
+call ReadFromFile
+jnc check_buffer1_size ; error reading?
+mWrite "Error reading file. " ; yes: show error message
+call WriteWindowsMsg
+jmp close_file
+
+
+close_file:
+mov eax,fileHandle
+call CloseFile
+quit:
+exit
+main ENDP
+END main
