@@ -45,7 +45,7 @@ mov buffer1[eax],0 ; insert null terminator
 mWrite "File size: "
 call WriteDec ; display file size
 call Crlf
-;...................................................
+;....................................................
 ;proj
 mov edx,offset buffer2
 mov ecx,20
